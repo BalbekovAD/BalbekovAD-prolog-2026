@@ -65,14 +65,16 @@ sum([H|T], N) :- sum(T, M), N is M + H.
 
 
 
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%% EXERCISES %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % this predicate is used for testing
 test_yes_no(P) :- P -> writeln("Yes"); writeln("No").
 
 % Exercise: Write a Prolog predicate sublist(X,Y) that is true if list X is a sublist of list Y. A sublist is defined as the original list, in the same order, but in which some elements may have been removed. (2 points)
 % sublist(X, Y) :- ...
-
+sublist([], _).
+sublist(Y, Y).
+sublist(X, [_|Y]) :- sublist(X, Y).
+sublist([E|X], [E|Y]) :- sublist(X, Y).
 % tests
 :- test_yes_no(sublist([a,b],[a,e,b,d,s,e])). % Yes
 :- test_yes_no(sublist([a,b],[a,e,e,f])). % No
@@ -83,6 +85,13 @@ test_yes_no(P) :- P -> writeln("Yes"); writeln("No").
 
 % Exercise: Write a Prolog predicate has_duplicates(X) that is true if list X contains duplicated elements (that is at least 2 copies of an element). (2 points)
 % has_duplicates(X) :- ...
+my_contains(X, [X]).
+my_contains(X, [X|_]).
+my_contains(X, [_|T]) :- my_contains(X, T).
+
+has_duplicates([E|L]) :- my_contains(E, L).
+has_duplicates([_|L]) :- has_duplicates(L).
+
 
 % tests
 :- test_yes_no(has_duplicates([a,e,b,d,s,e])). % Yes
@@ -110,6 +119,7 @@ store(smoothies_galore, [heath,john,michelle],
 
 % Exercise: Write a Prolog predicate more_than_four(X) that is true if store X has four or more smoothies on its menu. (2 points)
 % more_than_four(X) :- ...
+more_than_four(X) :- store(X, _, [_,_,_,_ | _]).
 
 % tests
 :- findall(_, more_than_four(best_smoothies), Res), writeln(Res). % []
@@ -117,7 +127,9 @@ store(smoothies_galore, [heath,john,michelle],
 
 % Exercise: Write a Prolog predicate exists(X) that is true if there is a store that sells a smoothie named X. (2 points)
 % exists(X) :- ...
-
+my_list_contains(S, [S|_]).
+my_list_contains(S, [_|R]) :- my_list_contains(S, R).
+exists(X) :- store(_, _, L), my_list_contains(smoothie(X, _, _), L).
 % tests
 :- test_yes_no(exists(combo1)). % Yes
 :- test_yes_no(exists(slimy)). % No
@@ -125,7 +137,9 @@ store(smoothies_galore, [heath,john,michelle],
 
 % Exercise: Write a Prolog predicate smoothies_in_store(X,L) that is true if there is a store named X, and if L is the list of smoothie names on the store's menu. (2 points)
 % smoothies_in_store(X,L) :- ...
-
+my_smoothies_names_list([], []).
+my_smoothies_names_list([N | R], [smoothie(N, _, _) | S]) :- my_smoothies_names_list(R, S).
+smoothies_in_store(X, L) :- store(X, _, N), my_smoothies_names_list(L, N).
 % tests
 :- findall(L, smoothies_in_store(all_smoothies,L), Res), writeln(Res). % [[pinacolada,green,purple,smooth]] (in some order)
 :- findall(Store/L, smoothies_in_store(Store,L), Res), writeln(Res). % [best_smoothies/[berry,tropical,blue],all_smoothies/[pinacolada,green,purple,smooth],smoothies_galore/[combo1,combo2,combo3,combo4,combo5]] (in some order)
@@ -133,6 +147,40 @@ store(smoothies_galore, [heath,john,michelle],
 % Exercise: Write a Prolog predicate find_smoothie(Store, Smoothie, Wants, Hates) that is true if Store has a Smoothie which ingredients contain every ingredient in list Wants and have no ingredient in list Hates (5 points)
 % NOTE: you may feel temptation to google something like "not in Prolog", and you will find a lot of fancy features, like `!', "cuts", etc. You do not need them in this task, do not complicate it for youself! Instead, just write another predicate based on disequality `\=` operator.
 % find_smoothie(Store, Smoothie, Wants, Hates) :- ...
+% MY COMMENT find_smoothie(store(_, _, AllSmoothies), Smoothie, Wants, Hates).
+% MY COMMENT my_ingredients_wants(Ingredients, Wants).
+% MY COMMENT my_ingredient_wants(Ingredient, Wants).
+% MY COMMENT my_ingredients_hates(Ingredients, Hates).
+% MY COMMENT my_ingredient_hates(Ingredient, Hates).
+
+my_ingredient_wants(Ingredient, [Ingredient|_]).
+my_ingredient_wants(Ingredient, [_| Wants]) :- my_ingredient_wants(Ingredient, Wants).
+
+% my_ingredients_wants(_, []).
+% my_ingredients_wants([Ingredient | RestIng], Wants) :- my_ingredient_wants(Ingredient, Wants), my_ingredients_wants(RestIng, Wants).
+
+my_ingredient_hates(_, []).
+my_ingredient_hates(Ingredient, [Hate | Hates]) :- Ingredient \= Hate, my_ingredient_hates(Ingredient, Hates).
+
+% my_ingredients_hates([Ingredient | RestIng], Hates) :- my_ingredient_hates(Ingredient, Hates), my_ingredients_hates(RestIng, Hates).
+% my_ingredients_hates(_, []).
+
+my_ingredients_wants(_, []).
+my_ingredients_wants(Ingredients, [Want | Wants]) :- my_ingredient_wants(Want, Ingredients), my_ingredients_wants(Ingredients, Wants).
+
+my_ingredients_hates([], _).
+my_ingredients_hates([Ingredient | RestIng], Hates) :- my_ingredient_hates(Ingredient, Hates), my_ingredients_hates(RestIng, Hates).
+
+my_ingredients(Ingredients, Wants, Hates) :- my_ingredients_wants(Ingredients, Wants), my_ingredients_hates(Ingredients, Hates).
+
+my_good_smoothie(smoothie(_, Ingredients, _), Wants, Hates) :- my_ingredients(Ingredients, Wants, Hates).
+my_good_smoothies([Smoothie|_], Smoothie, Wants, Hates) :- my_good_smoothie(Smoothie, Wants, Hates).
+my_good_smoothies([_|Smoothies], Smoothie, Wants, Hates) :- my_good_smoothies(Smoothies, Smoothie, Wants, Hates).
+
+% find_smoothie(store(_, _, AllSmoothies), smoothie(_, Ingredients, _), [], []).
+% find_smoothie(store(_, _, [smoothie(_, Ingredients, _) | _]), smoothie(_, Ingredients, _), Wants, Hates) :- my_ingredients(Ingredients, Wants, Hates).
+% find_smoothie(store(_, _, [_ | RestSmoothies]), smoothie(_, Ingredients, _), Wants, Hates) :- find_smoothie(store(_, _, RestSmoothies), smoothie(_, Ingredients, _), Wants, Hates).
+find_smoothie(Store, Smoothie, Wants, Hates) :- store(Store, _, Smoothies), my_good_smoothies(Smoothies, smoothie(Smoothie, _, _), Wants, Hates).
 
 % tests
 % Basically, if a user wants a smoothie with banana and orange, but hates blueberries and mango, the predicate tells that user about smoothies, and the stores that sells them, that match these requirements. For instance:
